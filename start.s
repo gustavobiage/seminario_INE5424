@@ -17,6 +17,8 @@ _start:
     ldr r1, _vectors
     mrc p15, 0, r1, c12, c0, 0
 
+    // Iniciar MMU
+    bl mmu_init
 
     // iniciar stack dos modos
     // Entrar em modo IRQ
@@ -30,9 +32,6 @@ _start:
     // Entrar em modo SVC
     msr cpsr_c, #0xD3
     bl init_svc_stack
-
-    // Iniciar MMU
-    bl mmu_init
 
     // Retornar para modo usuário
     bl main

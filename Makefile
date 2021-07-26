@@ -46,8 +46,8 @@ debug: multi00.bin
 	konsole -e arm-none-eabi-gdb -ex "target remote:1235" -ex "set confirm off" -ex "add-symbol-file multi00.elf" &
 	qemu-system-aarch64 -M raspi2 -cpu cortex-a53  -gdb tcp::1235 -S -serial null -serial mon:stdio -kernel multi00.elf
 
-debug-gcc: multi00.bin
-	konsole -e gdb-multiarch -ex "target remote:1235" -ex "set confirm off" &
+debug-gdb: multi00.bin
+	konsole -e gdb-multiarch -ex "target remote:1235" -ex "set confirm off" -ex "add-symbol-file multi00.elf" &
 	qemu-system-aarch64 -M raspi2 -cpu cortex-a53  -gdb tcp::1235 -S -serial null -serial mon:stdio -kernel multi00.elf
 
 

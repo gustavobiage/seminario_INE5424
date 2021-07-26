@@ -9,7 +9,7 @@ enum {
     FLAG_SET_REG               = 0x40000000
 };
 
-static void branch_prediction_enable() {
+inline void branch_prediction_enable() {
     __asm__("                                                                       \t\n\
         mrc     p15, 0, r0, c1, c0, 0                  // Read SCTLR                \t\n\
         orr     r0, r0, #(1 << 11)                     // Set the Z bit (bit 11)    \t\n\
@@ -17,26 +17,26 @@ static void branch_prediction_enable() {
         ");
 }
 
-static void enable_dside_prefetch() {
+inline void enable_dside_prefetch() {
     __asm__("mrc p15, 0, r0, c1, c0, 1 \t\n\
          orr r0, r0, #(0x1 << 2)   \t\n\
          mcr p15, 0, r0, c1, c0, 1 \t\n\
         ");
 }
 
-static void invalidate_tlb() {
+inline void invalidate_tlb() {
     __asm__("mov r0, #0x0 \t\n mcr p15, 0, r0, c8, c7, 0"); // TLBIALL - Invalidate entire Unifed TLB
 }
 
-static void clear_branch_prediction_array() {
+inline void clear_branch_prediction_array() {
     __asm__("mov r0, #0x0 \t\n mcr p15, 0, r0, c7, c5, 6"); // BPIALL - Invalidate entire branch predictor array
 }
 
-static void set_domain_access() {
+inline void set_domain_access() {
     __asm__("mcr p15, 0, %0, c3, c0, 0" : : "p"(TTBCR_DOMAIN) :);
 }
 
-static void page_tables_setup() {
+inline void page_tables_setup() {
     unsigned long aux = 0x0;
     for (int curr_page = 1006; curr_page >= 0; curr_page--) {
         aux = TTB_MEMORY_DESCRIPTOR | (curr_page << 20);
@@ -50,7 +50,7 @@ static void page_tables_setup() {
     }
 }
 
-static void enable_mmu() {
+inline void enable_mmu() {
     // TTB0 size is 16 kb, there is no TTB1 and no TTBCR
     // ARMv7 Architecture Reference Manual, pages 1330
     __asm__ ("mov r0, #0x0 \t\n mcr p15, 0, r0, c2, c0, 2"); // Write Translation Table Base Control Register.
@@ -73,7 +73,7 @@ static void enable_mmu() {
         ");
 }
 
-void clear_bss() {
+inline void clear_bss() {
     unsigned long bss_start, bss_end;
     __asm__("ldr %0, =__bss_start__" : "=r"(bss_start) :);
     __asm__("ldr %0, =__bss_end__" : "=r"(bss_end) :);
@@ -85,7 +85,7 @@ void clear_bss() {
 
 // DSB causes completion of all cache maintenance operations appearing in program
 // order before the DSB instruction.
-void dsb()
+inline void dsb()
 {
     __asm__("dsb");
 }
@@ -93,12 +93,12 @@ void dsb()
 // An ISB instruction causes the effect of all branch predictor maintenance
 // operations before the ISB instruction to be visible to all instructions
 // after the ISB instruction.
-void isb()
+inline void isb()
 {
     __asm__("isb");
 }
 
-void invalidate_caches()
+inline void invalidate_caches()
 {
     __asm__("                                                                           \t\n\
     // Disable L1 Caches.                                                               \t\n\
@@ -164,10 +164,10 @@ void mmu_init() {
     // Branch Prediction init
     branch_prediction_enable();
 
-    __asm__("str %0, [%1, #0x9c]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
-    __asm__("str %0, [%1, #0xac]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
-    __asm__("str %0, [%1, #0xbc]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
+    // __asm__("str %0, [%1, #0x9c]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
+    // __asm__("str %0, [%1, #0xac]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
+    // __asm__("str %0, [%1, #0xbc]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
     dsb();
-    __asm__("SEV");
+    // __asm__("SEV");
     clear_bss();
 }
