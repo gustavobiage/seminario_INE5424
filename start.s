@@ -16,19 +16,23 @@ _start:
     // Definir endereço de vector table
     ldr r1, _vectors
     mrc p15, 0, r1, c12, c0, 0
+
+
     // iniciar stack dos modos
-    
     // Entrar em modo IRQ
     msr cpsr_c, #0xD2
     bl init_irq_stack
 
     // Entrar em modo FIQ
-    msr cpsr_c, #0xD1 
+    msr cpsr_c, #0xD1
     bl init_fiq_stack
-    
+
     // Entrar em modo SVC
     msr cpsr_c, #0xD3
     bl init_svc_stack
+
+    // Iniciar MMU
+    bl mmu_init
 
     // Retornar para modo usuário
     bl main

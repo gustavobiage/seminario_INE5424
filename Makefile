@@ -1,7 +1,7 @@
 
 ARMGNU ?= arm-none-eabi
 
-COPS = -g3 -O0 -Wall -O2 -nostdlib -nostartfiles -ffreestanding
+COPS = -g3 -O0 -Wall -O2 -nostdlib -nostartfiles -ffreestanding -mcpu=cortex-a53
 
 gcc : multi00.bin
 
@@ -29,8 +29,11 @@ periph.o : periph.c
 handler.o : handler.c
 	$(ARMGNU)-gcc $(COPS) -c handler.c -o handler.o
 
-multi00.bin : memmap start.o periph.o multi00.o handler.o
-	$(ARMGNU)-ld start.o periph.o multi00.o handler.o -T memmap -o multi00.elf
+mmu.o : mmu.c
+	$(ARMGNU)-gcc $(COPS) -c mmu.c -o mmu.o
+
+multi00.bin : memmap start.o periph.o multi00.o handler.o mmu.o
+	$(ARMGNU)-ld start.o mmu.o periph.o multi00.o handler.o -T memmap -o multi00.elf
 	$(ARMGNU)-objdump -D multi00.elf > multi00.list
 	$(ARMGNU)-objcopy multi00.elf -O ihex multi00.hex
 	$(ARMGNU)-objcopy multi00.elf -O binary multi00.bin
@@ -42,6 +45,11 @@ run: multi00.bin
 debug: multi00.bin
 	konsole -e arm-none-eabi-gdb -ex "target remote:1235" -ex "set confirm off" -ex "add-symbol-file multi00.elf" &
 	qemu-system-aarch64 -M raspi2 -cpu cortex-a53  -gdb tcp::1235 -S -serial null -serial mon:stdio -kernel multi00.elf
+
+debug-gcc: multi00.bin
+	konsole -e gdb-multiarch -ex "target remote:1235" -ex "set confirm off" &
+	qemu-system-aarch64 -M raspi2 -cpu cortex-a53  -gdb tcp::1235 -S -serial null -serial mon:stdio -kernel multi00.elf
+
 
 # LOPS = -Wall -m32 -emit-llvm
 # LLCOPS0 = -march=arm

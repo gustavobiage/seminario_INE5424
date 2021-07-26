@@ -31,6 +31,7 @@ extern void timer_init ( void );
 extern unsigned int timer_tick ( void );
 
 extern unsigned int showcpu0 ( void );
+// extern void mmu_init ( void );
 
 extern void _context_switch(volatile unsigned int **from_sp, volatile unsigned int **to_sp);
 extern unsigned int* _get_stack_pointer(void);
@@ -63,7 +64,7 @@ void set_stack(volatile unsigned int * stack) {
 void init_irq_stack() {
     int mode = 0;
     __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n" 
+            "and %0, #0xff \n"
             "cmp %0, #0xd2 \n" // O modo atual do processador é IRQ?
             "bne halt      \n" : : "r"(mode): );
     irq_stack.stack = irq_stack.stack_base + (MAX_STACK - 1);
@@ -73,7 +74,7 @@ void init_irq_stack() {
 void init_fiq_stack() {
     int mode = 0;
     __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n" 
+            "and %0, #0xff \n"
             "cmp %0, #0xd1 \n" // O modo atual do processador é FIQ?
             "bne halt      \n" : : "r"(mode): );
     fiq_stack.stack = fiq_stack.stack_base + (MAX_STACK - 1);
@@ -83,7 +84,7 @@ void init_fiq_stack() {
 void init_svc_stack() {
     int mode = 0;
     __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n" 
+            "and %0, #0xff \n"
             "cmp %0, #0xd3 \n" // O modo atual do processador é SVC?
             "bne halt      \n" : : "r"(mode): );
     svc_stack.stack = irq_stack.stack_base + (MAX_STACK - 1);
@@ -168,6 +169,7 @@ int task2( void ) {
 //------------------------------------------------------------------------
 int main ( void )
 {
+    // mmu_init();
     uart_init();
 
     init_thread();
