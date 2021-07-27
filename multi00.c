@@ -110,7 +110,7 @@ void init_thread() {
     scheduler.length = 1;
     scheduler.current_id = main_id;
     scheduler.thread[main_id].stack = scheduler.thread[main_id].stack_base + (MAX_STACK - 1);
-    // __asm__("mov sp, %0" : : "r"(scheduler.thread[main_id].stack): );
+    __asm__("mov sp, %0" : : "r"(scheduler.thread[main_id].stack): );
     // set_stack(scheduler.thread[main_id].stack);
 }
 
@@ -119,22 +119,24 @@ void create_thread(void *thread_entry) {
     scheduler.thread[id].stack = scheduler.thread[id].stack_base + (MAX_STACK - 1);
 
     // *scheduler.thread[id].stack-- = 0x00000093; // cpsr =IRQ enabled/FIQ & Thumb
-                                                // disabled/Processor mode = SVC
-    // *scheduler.thread[id].stack-- = 0x00000093;  // cpsr
-    *scheduler.thread[id].stack-- = (unsigned int) thread_entry;       // r14: lr
-    *scheduler.thread[id].stack-- = 0;                  // r12
-    *scheduler.thread[id].stack-- = 0;                  // r11
-    *scheduler.thread[id].stack-- = 0;                  // r10
-    *scheduler.thread[id].stack-- = 0;                  // r9
-    *scheduler.thread[id].stack-- = 0;                  // r8
-    *scheduler.thread[id].stack-- = 0;                  // r7
-    *scheduler.thread[id].stack-- = 0;                  // r6
-    *scheduler.thread[id].stack-- = 0;                  // r5
-    *scheduler.thread[id].stack-- = 0;                  // r4
-    *scheduler.thread[id].stack-- = 0;                  // r3
-    *scheduler.thread[id].stack-- = 0;                  // r2
-    *scheduler.thread[id].stack-- = 0;                  // r1
-    *scheduler.thread[id].stack = 0;                    // r0
+                                                   // disabled/Processor mode = SVC
+    *scheduler.thread[id].stack-- = (unsigned int) thread_entry;       // r15: pc
+    *scheduler.thread[id].stack-- = 0x60000110;                        // cpsr
+    *scheduler.thread[id].stack-- = 0;                                 // ttbr0
+    *scheduler.thread[id].stack-- = 0;                                 // r14: lr
+    *scheduler.thread[id].stack-- = 0;                                 // r12
+    *scheduler.thread[id].stack-- = 0;                                 // r11
+    *scheduler.thread[id].stack-- = 0;                                 // r10
+    *scheduler.thread[id].stack-- = 0;                                 // r9
+    *scheduler.thread[id].stack-- = 0;                                 // r8
+    *scheduler.thread[id].stack-- = 0;                                 // r7
+    *scheduler.thread[id].stack-- = 0;                                 // r6
+    *scheduler.thread[id].stack-- = 0;                                 // r5
+    *scheduler.thread[id].stack-- = 0;                                 // r4
+    *scheduler.thread[id].stack-- = 0;                                 // r3
+    *scheduler.thread[id].stack-- = 0;                                 // r2
+    *scheduler.thread[id].stack-- = 0;                                 // r1
+    *scheduler.thread[id].stack = 0;                                   // r0
     // don't do stack--!
 
     scheduler.length++;
@@ -163,12 +165,6 @@ int task1( void ) {
         hexstring(1);
         io_halt();
     }
-    // int n = 10;
-    // while (n--) {
-    //     hexstring(1);
-    //     context_switch();
-    // }
-    // return(0);
 }
 
 int task2( void ) {
@@ -176,12 +172,6 @@ int task2( void ) {
         hexstring(2);
         io_halt();
     }
-    // int n = 10;
-    // while(n--) {
-    //     hexstring(2);
-    //     context_switch();
-    // }
-    // return(0);
 }
 
 //------------------------------------------------------------------------
@@ -194,20 +184,6 @@ int main ( void )
         hexstring(0);
         io_halt();
     }
-
-    // routing_core0cntv_to_core0irq();
-    // enable_cntv();
-    // enable_irq();
-
-    // int n = 10;
-    // while(n--) {
-    //     hexstring(0);
-    //     context_switch();
-    // }
-
-    // while(1) {
-    //     io_halt();
-    // }
 
     return(0);
 }
