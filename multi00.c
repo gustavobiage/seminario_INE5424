@@ -55,7 +55,7 @@ typedef struct stack {
 
 typedef struct {
     unsigned int length;
-    unsigned int current_id;
+    volatile unsigned int current_id;
     thread_t thread[MAX_THREADS];
 } scheduler_t;
 
@@ -153,29 +153,37 @@ void context_switch() {
     // do context switch
     scheduler.current_id = next_id;
 
-    // hexstring((unsigned int) current_id);
-    // hexstring((unsigned int) next_id);
+    hexstring((unsigned int) current_id);
+    hexstring((unsigned int) next_id);
 
     _context_switch(&scheduler.thread[current_id].stack,
                     &scheduler.thread[next_id].stack);
 }
 
 int task1( void ) {
-    int n = 10;
-    while (n--) {
+    while (1) {
         hexstring(1);
-        context_switch();
+        io_halt();
     }
-    return(0);
+    // int n = 10;
+    // while (n--) {
+    //     hexstring(1);
+    //     context_switch();
+    // }
+    // return(0);
 }
 
 int task2( void ) {
-    int n = 10;
-    while(n--) {
+    while (1) {
         hexstring(2);
-        context_switch();
+        io_halt();
     }
-    return(0);
+    // int n = 10;
+    // while(n--) {
+    //     hexstring(2);
+    //     context_switch();
+    // }
+    // return(0);
 }
 
 //------------------------------------------------------------------------
@@ -183,9 +191,9 @@ int main ( void )
 {
     uart_init();
 
-    // init_thread();
-    // create_thread(task1);
-    // create_thread(task2);
+    init_thread();
+    create_thread(task1);
+    create_thread(task2);
 
     kernel_main();
 

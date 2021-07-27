@@ -105,9 +105,11 @@ GETPC:
     bx lr
 
 irq:
-    push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+    stmia sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+    @ stmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}
     bl exc_handler
-    pop  {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+    @ ldmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}^
+    ldmia sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}^
     subs pc,lr,#4
 
 .globl showcpu0
@@ -122,14 +124,79 @@ _get_stack_pointer:
 
 .global _context_switch
 _context_switch:
-  // same as stmfd/stmdb !r13, {...}
-  push {r0-r12,r14}
-  str sp, [r0]
-  ldr sp, [r1]
-  // mov sp, r1
-  // same as ldmfd/ldmia !r13, {...}
-  pop {r0-r12}
-  pop {pc} // pc points to the previous lr
+    // same as stmfd/stmdb !r13, {...}
+    ldr r4, [r0]
+
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+    pop {r3}
+    str r3, [r4]!
+
+    str r4, [r0]
+    ldr r4, [r1]
+
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+    ldr r3, [r4]!
+    push {r3}
+
+    str r4, [r1]
+    bx lr
+
+    @ @ push {r0-r12,r14}
+    @ @ str sp, [r0]
+    @ // mov sp, r1
+    @ // same as ldmfd/ldmia !r13, {...}
+    @ pop {r0-r12}
+    @ pop {pc} // pc points to the previous lr
 
 .globl enable_irq
 enable_irq:

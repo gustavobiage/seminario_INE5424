@@ -9,6 +9,7 @@ extern void hexstring(unsigned int);
 extern void enable_irq(void);
 extern void disable_irq(void);
 extern void io_halt(void);
+extern void context_switch();
 
 // Memory-Mapped I/O output
 static inline void mmio_write(uint32_t reg, uint32_t data)
@@ -94,6 +95,7 @@ void exc_handler(void)
     if (read_core0timer_pending() & 0x08 ) {
         write_cntv_tval(cntfrq);    // clear cntv interrupt and set next 1sec timer.
 
+        context_switch();
         hexstring(555);
         // uart_puts("core0timer_pendig : ");
         // uart_hex_puts(read_core0timer_pending());
@@ -126,6 +128,7 @@ void kernel_main(void)
     enable_irq();
 
     while (1) {
+        hexstring(3);
         io_halt();
     }
 }
