@@ -9,6 +9,8 @@ enum {
     FLAG_SET_REG               = 0x40000000
 };
 
+unsigned int* page_tables = (unsigned int*) 0x3eef0000;
+
 inline void branch_prediction_enable() {
     __asm__("                                                                       \t\n\
         mrc     p15, 0, r0, c1, c0, 0                  // Read SCTLR                \t\n\
@@ -36,18 +38,43 @@ inline void set_domain_access() {
     __asm__("mcr p15, 0, %0, c3, c0, 0" : : "p"(TTBCR_DOMAIN) :);
 }
 
+// inline void page_tables_setup(volatile unsigned int* base_address) {
 inline void page_tables_setup() {
-    unsigned long aux = 0x0;
+    unsigned int aux = 0x0;
     for (int curr_page = 1006; curr_page >= 0; curr_page--) {
         aux = TTB_MEMORY_DESCRIPTOR | (curr_page << 20);
-        ((unsigned long*) PAGE_TABLES)[curr_page] = aux;
+        ((unsigned int*) PAGE_TABLES)[curr_page] = aux;
     }
     aux = TTB_DEVICE_DESCRIPTOR | (1007 << 20);
-    ((unsigned long*) PAGE_TABLES)[1007] = aux;
+    ((unsigned int*) PAGE_TABLES)[1007] = aux;
     for (int curr_page = 4095; curr_page > 1007; curr_page--) {
         aux = TTB_PERIPHERAL_DESCRIPTOR | (curr_page << 20);
-        ((unsigned long*) PAGE_TABLES)[curr_page] = aux;
+        ((unsigned int*) PAGE_TABLES)[curr_page] = aux;
     }
+}
+
+inline void page_tables_setup2(unsigned int* page_tables, int i) {
+    unsigned int aux = 0x0;
+    for (int curr_page = 1006; curr_page >= 0; curr_page--) {
+        aux = TTB_MEMORY_DESCRIPTOR | ((curr_page * i) << 20);
+        ((unsigned int*) page_tables)[curr_page] = aux;
+    }
+    aux = TTB_DEVICE_DESCRIPTOR | (1007 << 20);
+    ((unsigned int*) page_tables)[1007] = aux;
+    for (int curr_page = 4095; curr_page > 1007; curr_page--) {
+        aux = TTB_PERIPHERAL_DESCRIPTOR | ((curr_page * i) << 20);
+        ((unsigned int*) page_tables)[curr_page] = aux;
+    }
+}
+
+int counter = 2;
+
+unsigned int build_page_table() {
+    unsigned int base = (unsigned int) page_tables;
+    page_tables_setup2(page_tables, counter);
+    counter++;
+    page_tables -= 8 << 12;
+    return base;
 }
 
 inline void enable_mmu() {
@@ -74,12 +101,12 @@ inline void enable_mmu() {
 }
 
 inline void clear_bss() {
-    unsigned long bss_start, bss_end;
+    unsigned int bss_start, bss_end;
     __asm__("ldr %0, =__bss_start__" : "=r"(bss_start) :);
     __asm__("ldr %0, =__bss_end__" : "=r"(bss_end) :);
-    unsigned long limit = (bss_end - bss_start)/4;
-    for(unsigned long i = 0; i < limit; i++) {
-        ((unsigned long*) bss_start)[i] = 0x0;
+    unsigned int limit = (bss_end - bss_start)/4;
+    for(unsigned int i = 0; i < limit; i++) {
+        ((unsigned int*) bss_start)[i] = 0x0;
     }
 }
 
@@ -137,6 +164,7 @@ set_loop:                                                                       
 }
 
 void mmu_init() {
+    // page_tables = (unsigned int*) 0;
     invalidate_caches();
     clear_branch_prediction_array();
     invalidate_tlb();
@@ -153,6 +181,9 @@ void mmu_init() {
     // It would be faster to create this in a read-only section in an assembly file.
 
     page_tables_setup();
+
+    // page_tables_setup(page_tables);
+    page_tables -= 8 << 12;
 
     // Activate the MMU
     enable_mmu();

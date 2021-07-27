@@ -33,6 +33,8 @@ extern unsigned int timer_tick ( void );
 extern void enable_cntv();
 extern void enable_irq();
 
+extern unsigned int build_page_table();
+
 extern void io_halt();
 
 extern void routing_core0cntv_to_core0irq();
@@ -122,7 +124,7 @@ void create_thread(void *thread_entry) {
                                                    // disabled/Processor mode = SVC
     *scheduler.thread[id].stack-- = (unsigned int) thread_entry;       // r15: pc
     *scheduler.thread[id].stack-- = 0x60000110;                        // cpsr
-    *scheduler.thread[id].stack-- = 0;                                 // ttbr0
+    *scheduler.thread[id].stack-- = build_page_table();                // ttbr0
     *scheduler.thread[id].stack-- = 0;                                 // r14: lr
     *scheduler.thread[id].stack-- = 0;                                 // r12
     *scheduler.thread[id].stack-- = 0;                                 // r11
@@ -156,6 +158,8 @@ void schedule() {
     // do context switch
     scheduler.current_id = next_id;
 
+    int ttbr0 = *(scheduler.thread[next_id].stack + 14);
+    hexstring(ttbr0);
     _after_context_switch(&scheduler.thread[current_id].stack,
                           &scheduler.thread[next_id].stack);
 }

@@ -146,8 +146,24 @@ boot:
     .equ IRQ_BIT,  0x80
     .equ FIQ_BIT,  0x40
 
+    mov r0, #0x00010000
+    mov r1, #0
+
+    @ MCR p15, 0, r0, c7, c8, 1  // Address translation operation, as defined by <opc1> and <opc2>
+    MCR p15, 0, r0, c7, c8, 2  // Address translation operation, as defined by <opc1> and <opc2>
+    MRC p15, 0, r1, c7, c4, 0  //        ; Read 32-bit PAR into Rt
+
     // Inicializa MMU
     bl mmu_init
+
+    mov r0, #0x00010000
+    mov r1, #0
+
+    @ MCR p15, 0, r0, c7, c8, 1  // Address translation operation, as defined by <opc1> and <opc2>
+    MCR p15, 0, r0, c7, c8, 2  // Address translation operation, as defined by <opc1> and <opc2>
+    MRC p15, 0, r1, c7, c4, 0  //        ; Read 32-bit PAR into Rt
+
+
 
     // save CPSR.
     mrs r0, cpsr
@@ -194,6 +210,10 @@ _before_context_switch:
     pop {r0-r12}
     msr cpsr_c, #0x1F           // back to sys mode
     push {r0-r12,lr}
+    @ mov r0, #0x0
+    @ mcr p15, 0, r0, c8, c7, 0 // TLBIALL - Invalidate entire Unifed TLB
+    @ mcr p15, 0, r0, c8, c6, 0 // TLBIALL - Invalidate entire Unifed TLB
+    @ isb
     b schedule
 
 .global _after_context_switch
