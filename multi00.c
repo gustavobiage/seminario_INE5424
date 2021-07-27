@@ -30,6 +30,15 @@ extern unsigned int timer_tick ( void );
 extern void timer_init ( void );
 extern unsigned int timer_tick ( void );
 
+extern void enable_cntv();
+extern void enable_irq();
+
+extern void io_halt();
+
+extern void routing_core0cntv_to_core0irq();
+
+extern void kernel_main();
+
 extern unsigned int showcpu0 ( void );
 // extern void mmu_init ( void );
 
@@ -53,42 +62,45 @@ typedef struct {
 scheduler_t scheduler;
 struct stack irq_stack;
 struct stack svc_stack;
-struct stack fiq_stack;
+// struct stack fiq_stack;
 
 void halt() { while(1); };
 
-void set_stack(volatile unsigned int * stack) {
+inline void set_stack(volatile unsigned int * stack) {
     __asm__("mov sp, %0" : : "r"(stack): );
 }
 
 void init_irq_stack() {
-    int mode = 0;
-    __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n"
-            "cmp %0, #0xd2 \n" // O modo atual do processador é IRQ?
-            "bne halt      \n" : : "r"(mode): );
+    // int mode = 0;
+    // __asm__("mrs %0, CPSR  \n"
+    //         "and %0, #0xff \n"
+    //         "cmp %0, #0xd2 \n" // O modo atual do processador é IRQ?
+    //         "bne halt      \n" : : "r"(mode): );
     irq_stack.stack = irq_stack.stack_base + (MAX_STACK - 1);
-    set_stack(irq_stack.stack);
+    __asm__("mov sp, %0" : : "r"(irq_stack.stack): );
+    // set_stack(irq_stack.stack);
 }
 
-void init_fiq_stack() {
-    int mode = 0;
-    __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n"
-            "cmp %0, #0xd1 \n" // O modo atual do processador é FIQ?
-            "bne halt      \n" : : "r"(mode): );
-    fiq_stack.stack = fiq_stack.stack_base + (MAX_STACK - 1);
-    set_stack(fiq_stack.stack);
-}
+// void init_fiq_stack() {
+//     // int mode = 0;
+//     // __asm__("mrs %0, CPSR  \n"
+//     //         "and %0, #0xff \n"
+//     //         "cmp %0, #0xd1 \n" // O modo atual do processador é FIQ?
+//     //         "bne halt      \n" : : "r"(mode): );
+//     fiq_stack.stack = fiq_stack.stack_base + (MAX_STACK - 1);
+//     set_stack(fiq_stack.stack);
+// }
 
 void init_svc_stack() {
-    int mode = 0;
-    __asm__("mrs %0, CPSR  \n"
-            "and %0, #0xff \n"
-            "cmp %0, #0xd3 \n" // O modo atual do processador é SVC?
-            "bne halt      \n" : : "r"(mode): );
+    // int mode = 0;
+    // __asm__("mrs %0, CPSR  \n"
+    //         "and %0, #0xff \n"
+    //         "cmp %0, #0xd3 \n" // O modo atual do processador é SVC?
+    //         "bne halt      \n" : : "r"(mode): );
     svc_stack.stack = irq_stack.stack_base + (MAX_STACK - 1);
-    set_stack(svc_stack.stack);
+    __asm__("mov sp, %0" : : "r"(svc_stack.stack): );
+
+    // set_stack(svc_stack.stack);
 }
 
 // void init
@@ -169,18 +181,27 @@ int task2( void ) {
 //------------------------------------------------------------------------
 int main ( void )
 {
-    // mmu_init();
     uart_init();
 
-    init_thread();
-    create_thread(task1);
-    create_thread(task2);
+    // init_thread();
+    // create_thread(task1);
+    // create_thread(task2);
 
-    int n = 10;
-    while(n--) {
-        hexstring(0);
-        context_switch();
-    }
+    kernel_main();
+
+    // routing_core0cntv_to_core0irq();
+    // enable_cntv();
+    // enable_irq();
+
+    // int n = 10;
+    // while(n--) {
+    //     hexstring(0);
+    //     context_switch();
+    // }
+
+    // while(1) {
+    //     io_halt();
+    // }
 
     return(0);
 }

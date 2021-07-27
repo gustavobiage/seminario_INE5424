@@ -1,7 +1,7 @@
 
 ARMGNU ?= arm-none-eabi
 
-COPS = -g3 -O0 -Wall -O2 -nostdlib -nostartfiles -ffreestanding -mcpu=cortex-a53
+COPS = -g3 -O2 -Wall -nostdlib -nostartfiles -ffreestanding -mcpu=cortex-a53
 
 gcc : multi00.bin
 
@@ -26,14 +26,14 @@ multi00.o : multi00.c
 periph.o : periph.c
 	$(ARMGNU)-gcc $(COPS) -c periph.c -o periph.o
 
-handler.o : handler.c
-	$(ARMGNU)-gcc $(COPS) -c handler.c -o handler.o
+timer.o : timer.c
+	$(ARMGNU)-gcc $(COPS) -c timer.c -o timer.o
 
 mmu.o : mmu.c
 	$(ARMGNU)-gcc $(COPS) -c mmu.c -o mmu.o
 
-multi00.bin : memmap start.o periph.o multi00.o handler.o mmu.o
-	$(ARMGNU)-ld start.o mmu.o periph.o multi00.o handler.o -T memmap -o multi00.elf
+multi00.bin : memmap start.o periph.o multi00.o timer.o mmu.o
+	$(ARMGNU)-ld start.o mmu.o periph.o multi00.o timer.o -T memmap -o multi00.elf
 	$(ARMGNU)-objdump -D multi00.elf > multi00.list
 	$(ARMGNU)-objcopy multi00.elf -O ihex multi00.hex
 	$(ARMGNU)-objcopy multi00.elf -O binary multi00.bin
