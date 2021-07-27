@@ -9,7 +9,7 @@ extern void hexstring(unsigned int);
 extern void enable_irq(void);
 extern void disable_irq(void);
 extern void io_halt(void);
-extern void context_switch();
+extern void schedule();
 
 // Memory-Mapped I/O output
 static inline void mmio_write(uint32_t reg, uint32_t data)
@@ -75,7 +75,7 @@ uint32_t read_cntv_tval(void)
     return val;
 }
 
-void write_cntv_tval(uint32_t val)
+inline void write_cntv_tval(uint32_t val)
 {
 	asm volatile ("mcr p15, 0, %0, c14, c3, 0" :: "r"(val) );
     return;
@@ -91,12 +91,10 @@ uint32_t read_cntfrq(void)
 
 void exc_handler(void)
 {
-    hexstring(555);
     if (read_core0timer_pending() & 0x08 ) {
         write_cntv_tval(cntfrq);    // clear cntv interrupt and set next 1sec timer.
-
-        context_switch();
-        hexstring(555);
+        __asm__("b _before_context_switch");
+        // schedule();
         // uart_puts("core0timer_pendig : ");
         // uart_hex_puts(read_core0timer_pending());
         // uart_puts("handler CNTV_TVAL : ");
@@ -107,28 +105,11 @@ void exc_handler(void)
     return;
 }
 
-void kernel_main(void)
+void init_timer(void)
 {
-    // uint32_t val;
-
-    // uart_puts("timer01 : arm generic timer every 1 sec.\n");
-    // uart_puts("exit : Ctrl-A x ,monitor : Ctrl-A c\n\n");
-
-    // uart_puts("CNTFRQ  : ");
     cntfrq = read_cntfrq();
-    // uart_hex_puts(cntfrq);
-
     write_cntv_tval(cntfrq);    // clear cntv interrupt and set next 1 sec timer.
-    // uart_puts("CNTV_TVAL: ");
-    // val = read_cntv_tval();
-    // uart_hex_puts(val);
-
     routing_core0cntv_to_core0irq();
     enable_cntv();
     enable_irq();
-
-    while (1) {
-        hexstring(3);
-        io_halt();
-    }
 }

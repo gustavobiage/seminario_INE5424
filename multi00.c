@@ -42,10 +42,10 @@ extern void kernel_main();
 extern unsigned int showcpu0 ( void );
 // extern void mmu_init ( void );
 
-extern void _context_switch(volatile unsigned int **from_sp, volatile unsigned int **to_sp);
+extern void _after_context_switch(volatile unsigned int **from_sp, volatile unsigned int **to_sp);
 extern unsigned int* _get_stack_pointer(void);
 
-#define MAX_STACK 256
+#define MAX_STACK 1024
 #define MAX_THREADS 3
 
 typedef struct stack {
@@ -97,7 +97,7 @@ void init_svc_stack() {
     //         "and %0, #0xff \n"
     //         "cmp %0, #0xd3 \n" // O modo atual do processador é SVC?
     //         "bne halt      \n" : : "r"(mode): );
-    svc_stack.stack = irq_stack.stack_base + (MAX_STACK - 1);
+    svc_stack.stack = svc_stack.stack_base + (MAX_STACK - 1);
     __asm__("mov sp, %0" : : "r"(svc_stack.stack): );
 
     // set_stack(svc_stack.stack);
@@ -110,7 +110,8 @@ void init_thread() {
     scheduler.length = 1;
     scheduler.current_id = main_id;
     scheduler.thread[main_id].stack = scheduler.thread[main_id].stack_base + (MAX_STACK - 1);
-    set_stack(scheduler.thread[main_id].stack);
+    __asm__("mov sp, %0" : : "r"(scheduler.thread[main_id].stack): );
+    // set_stack(scheduler.thread[main_id].stack);
 }
 
 void create_thread(void *thread_entry) {
@@ -119,7 +120,7 @@ void create_thread(void *thread_entry) {
 
     // *scheduler.thread[id].stack-- = 0x00000093; // cpsr =IRQ enabled/FIQ & Thumb
                                                 // disabled/Processor mode = SVC
-    // *scheduler.thread[id].stack-- = (unsigned int) thread_entry;  // r15: pc
+    // *scheduler.thread[id].stack-- = 0x00000093;  // cpsr
     *scheduler.thread[id].stack-- = (unsigned int) thread_entry;       // r14: lr
     *scheduler.thread[id].stack-- = 0;                  // r12
     *scheduler.thread[id].stack-- = 0;                  // r11
@@ -139,7 +140,7 @@ void create_thread(void *thread_entry) {
     scheduler.length++;
 }
 
-void context_switch() {
+void schedule() {
     int current_id = scheduler.current_id;
     int next_id = current_id + 1;
 
@@ -156,8 +157,8 @@ void context_switch() {
     hexstring((unsigned int) current_id);
     hexstring((unsigned int) next_id);
 
-    _context_switch(&scheduler.thread[current_id].stack,
-                    &scheduler.thread[next_id].stack);
+    _after_context_switch(&scheduler.thread[current_id].stack,
+                          &scheduler.thread[next_id].stack);
 }
 
 int task1( void ) {
@@ -189,13 +190,13 @@ int task2( void ) {
 //------------------------------------------------------------------------
 int main ( void )
 {
-    uart_init();
-
-    init_thread();
     create_thread(task1);
     create_thread(task2);
 
-    kernel_main();
+    while (1) {
+        hexstring(0);
+        io_halt();
+    }
 
     // routing_core0cntv_to_core0irq();
     // enable_cntv();

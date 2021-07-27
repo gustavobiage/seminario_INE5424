@@ -16,69 +16,45 @@ _start:
 
     .equ MODE_IRQ, 0x12
     .equ MODE_SVC, 0x13
+    .equ MODE_USR, 0x10
     .equ IRQ_BIT,  0x80
     .equ FIQ_BIT,  0x40
 
     // Inicializa MMU
-    bl mmu_init
+    @ bl mmu_init
 
     // save CPSR.
     mrs r0, cpsr
 
     // Entrar em modo IRQ
-    msr cpsr_c, #MODE_IRQ
+    @ bic r1, r0, #0x1F
+    @ orr r2, r1, #0x10
+    @ orr r1, r1, #0x12
+    msr cpsr_c, #MODE_IRQ | IRQ_BIT | FIQ_BIT
     bl init_irq_stack
+    @ mov sp, #0x4000
+    isb
 
     // Entrar em modo SVC
-    msr cpsr, r0
+    msr cpsr_c, #MODE_SVC | IRQ_BIT | FIQ_BIT
     bl init_svc_stack
+    @ mov sp, #0x8000
+    isb
 
-@     // Clear bss.
-@     ldr r4, =__bss_start__
-@     ldr r9, =__bss_end__
-@     mov r5, #0
-@     mov r6, #0
-@     mov r7, #0
-@     mov r8, #0
-@     b       2f
+    bl uart_init
+    bl init_timer
 
-@ 1:
-@     // store multiple at r4.
-@     stmia r4!, {r5-r8}
+    // Entrar em modo User
+    msr cpsr_c, #MODE_USR
+    bl init_thread
+    isb
 
-@     // If we are still below bss_end, loop.
-@ 2:
-@     cmp r4, r9
-@     blo 1b
-
-    // Entrar em modo SVC
-    @ msr cpsr_c, #MODE_SVC
-
-    // Call kernel_main
     ldr r3, =main
     blx r3
 
 hang:
     wfi
     b hang
-    // cpu id > 0, stop
-1:  wfe
-    b       1b
-2:
-    // Definir endereço de vector table
-    ldr r1, _vectors
-    mrc p15, 0, r1, c12, c0, 0
-
-    // Iniciar MMU
-    @ bl mmu_init
-
-    // iniciar stack dos modos
-    // Entrar em modo IRQ
-
-
-    // Retornar para modo usuário
-    bl main
-@ hang: b hang
 
 .globl PUT32
 PUT32:
@@ -105,12 +81,15 @@ GETPC:
     bx lr
 
 irq:
-    stmia sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
-    @ stmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}
+    push {r0-r12,lr}
     bl exc_handler
-    @ ldmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}^
-    ldmia sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}^
+    pop {r0-r12,lr}
     subs pc,lr,#4
+    // push {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}
+    // stmfd sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+    // stmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}
+    // ldmia sp!, {lr,r12,r11,r10,r9,r8,r7,r6,r5,r4,r3,r2,r1,r0}^
+    // ldmfd sp!, {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}^
 
 .globl showcpu0
 showcpu0:
@@ -122,81 +101,124 @@ _get_stack_pointer:
   mov r0, r13
   bx lr
 
-.global _context_switch
-_context_switch:
-    // same as stmfd/stmdb !r13, {...}
-    ldr r4, [r0]
+.global _before_context_switch
+_before_context_switch:
+    pop {r0-r12, lr}            // pop from sp_irq
+    sub lr, lr, #4
 
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
-    pop {r3}
-    str r3, [r4]!
+    @ mrs r0, cpsr                // dirty r0 ????
+    @ bic r0, #0x1F
+    @ orr r0, #0x10
+    @ msr cpsr_c, r0              // back to user mode
 
-    str r4, [r0]
-    ldr r4, [r1]
+    push {r0-r12, lr}           // push to sp_usr
+    @ stmfd sp!, {r0-r12, lr}^  // push to sp_usr
+    b schedule
 
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
-    ldr r3, [r4]!
-    push {r3}
+.global _after_context_switch
+_after_context_switch:
+    str sp, [r0]
+    ldr sp, [r1]
+    pop {r0-r12}
+    pop {pc}
 
-    str r4, [r1]
-    bx lr
 
-    @ @ push {r0-r12,r14}
-    @ @ str sp, [r0]
-    @ // mov sp, r1
-    @ // same as ldmfd/ldmia !r13, {...}
-    @ pop {r0-r12}
-    @ pop {pc} // pc points to the previous lr
+@ .global _context_switch
+@ _context_switch:
+@     @ push {r0-r12, lr}
+@     str sp, [r0]
+@     ldr sp, [r1]
+@     pop {r0-r12}
+@     pop {pc}
+
+    @ @ pop {r0-r12,lr}
+    @ pop {r3-r5}                 // pop  r0,r1,r2 to r3,r4,r5
+    @ ldr r2, [r0]                // load sp_old to r2
+    @ stmfd r2!, {r3-r5}          // push r0,r1,r2 to sp_old
+    @ pop {r3-r12,lr}             // load r3-r12,lr
+    @ stmfd r2!, {r3-r12,lr}      // push r3-r12,lr to sp_old
+    @ str r2, [r0]                // update sp_old on [r0]
+    @                             // now we're done with sp_old
+    @ mov r2, [r1]
+    @ ldmfd r2!,
+
+    @ subs pc, lr, #4
+
+
+    @ ldr r4, [r0]
+
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+    @ pop {r3}
+    @ str r3, [r4, #-4]!
+
+    @ str r4, [r0]
+    @ ldr r4, [r1]
+
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+    @ ldr r3, [r4, #4]!
+    @ push {r3}
+
+    @ str r4, [r1]
+    @ bx lr
+
+    // push {r0-r12,r14}
+    // str sp, [r0]
+    // ldr sp, [r1]
+    // // mov sp, r1
+    // // same as ldmfd/ldmia !r13, {...}
+    // pop {r0-r12,r14}
+    // bx lr
+    // pop {pc} // pc points to the previous lr
 
 .globl enable_irq
 enable_irq:
@@ -212,16 +234,34 @@ disable_irq:
 BRANCHTO:
     bx r0
 
+halt1:
+    b halt1
+
+halt2:
+    b halt2
+
+halt3:
+    b halt3
+
+halt4:
+    subs pc,lr,#4
+
+halt5:
+    subs pc,lr,#4
+
+halt6:
+    b halt6
+
 .global _vectors
 _vectors:
-    b halt
-    b halt
-    b exc_handler    // SVC Handler
-    b halt
-    b halt
-    NOP                    // Reserved vector
-    b irq    // IRQ Handler
-    b halt    // FIQ Handler
+    b halt1         // Reset
+    b halt2         // Undefined instruction
+    b halt3         // SVC Handler
+    b halt4         // Prefetch abort
+    b halt5         // Data abort
+    NOP             // Reserved vector
+    b irq           // IRQ Handler
+    b halt6         // FIQ Handler
 
 ;@-------------------------------------------------------------------------
 ;@-------------------------------------------------------------------------
