@@ -4,53 +4,7 @@
 
 .globl _start
 _start:
-    // read cpu id, stop slave cores
-    mrc p15, #0, r1, c0, c0, #5
-    and r1, r1, #3
-    cmp r1, #0
-    bne hang
-
-    // set vector address.
-    ldr r0, =_vectors
-    mcr P15, 0, r0, c12, c0, 0
-
-    .equ MODE_IRQ, 0x12
-    .equ MODE_SVC, 0x13
-    .equ MODE_USR, 0x10
-    .equ IRQ_BIT,  0x80
-    .equ FIQ_BIT,  0x40
-
-    // Inicializa MMU
-    @ bl mmu_init
-
-    // save CPSR.
-    mrs r0, cpsr
-
-    // Entrar em modo IRQ
-    @ bic r1, r0, #0x1F
-    @ orr r2, r1, #0x10
-    @ orr r1, r1, #0x12
-    msr cpsr_c, #MODE_IRQ | IRQ_BIT | FIQ_BIT
-    bl init_irq_stack
-    @ mov sp, #0x4000
-    isb
-
-    // Entrar em modo SVC
-    msr cpsr_c, #MODE_SVC | IRQ_BIT | FIQ_BIT
-    bl init_svc_stack
-    @ mov sp, #0x8000
-    isb
-
-    bl uart_init
-    bl init_timer
-
-    // Entrar em modo User
-    msr cpsr_c, #MODE_USR
-    bl init_thread
-    isb
-
-    ldr r3, =main
-    blx r3
+    bl boot
 
 hang:
     wfi
@@ -104,15 +58,11 @@ _get_stack_pointer:
 .global _before_context_switch
 _before_context_switch:
     pop {r0-r12, lr}            // pop from sp_irq
-    sub lr, lr, #4
+    sub lr, lr, #4              // ajust return address
 
-    @ mrs r0, cpsr                // dirty r0 ????
-    @ bic r0, #0x1F
-    @ orr r0, #0x10
-    @ msr cpsr_c, r0              // back to user mode
+    msr cpsr_c, #0x13           // back to svc mode
 
     push {r0-r12, lr}           // push to sp_usr
-    @ stmfd sp!, {r0-r12, lr}^  // push to sp_usr
     b schedule
 
 .global _after_context_switch
@@ -130,87 +80,6 @@ _after_context_switch:
 @     ldr sp, [r1]
 @     pop {r0-r12}
 @     pop {pc}
-
-    @ @ pop {r0-r12,lr}
-    @ pop {r3-r5}                 // pop  r0,r1,r2 to r3,r4,r5
-    @ ldr r2, [r0]                // load sp_old to r2
-    @ stmfd r2!, {r3-r5}          // push r0,r1,r2 to sp_old
-    @ pop {r3-r12,lr}             // load r3-r12,lr
-    @ stmfd r2!, {r3-r12,lr}      // push r3-r12,lr to sp_old
-    @ str r2, [r0]                // update sp_old on [r0]
-    @                             // now we're done with sp_old
-    @ mov r2, [r1]
-    @ ldmfd r2!,
-
-    @ subs pc, lr, #4
-
-
-    @ ldr r4, [r0]
-
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-    @ pop {r3}
-    @ str r3, [r4, #-4]!
-
-    @ str r4, [r0]
-    @ ldr r4, [r1]
-
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-    @ ldr r3, [r4, #4]!
-    @ push {r3}
-
-    @ str r4, [r1]
-    @ bx lr
-
     // push {r0-r12,r14}
     // str sp, [r0]
     // ldr sp, [r1]
@@ -262,6 +131,57 @@ _vectors:
     NOP             // Reserved vector
     b irq           // IRQ Handler
     b halt6         // FIQ Handler
+
+
+boot:
+    // read cpu id, stop slave cores
+    mrc p15, #0, r1, c0, c0, #5
+    and r1, r1, #3
+    cmp r1, #0
+    bne hang
+
+    // set vector address.
+    ldr r0, =_vectors
+    mcr P15, 0, r0, c12, c0, 0
+
+    .equ MODE_IRQ, 0x12
+    .equ MODE_SVC, 0x13
+    .equ MODE_USR, 0x10
+    .equ IRQ_BIT,  0x80
+    .equ FIQ_BIT,  0x40
+
+    // Inicializa MMU
+    bl mmu_init
+
+    // save CPSR.
+    mrs r0, cpsr
+
+    // Entrar em modo IRQ
+    @ bic r1, r0, #0x1F
+    @ orr r2, r1, #0x10
+    @ orr r1, r1, #0x12
+    msr cpsr_c, #MODE_IRQ | IRQ_BIT | FIQ_BIT
+    @ bl init_irq_stack
+    mov sp, #0x4000
+    isb
+
+    // Entrar em modo SVC
+    msr cpsr_c, #MODE_SVC | IRQ_BIT | FIQ_BIT
+    @ bl init_svc_stack
+    bl init_thread
+    mov sp, #0x8000
+    isb
+
+    bl uart_init
+    bl init_timer
+
+    @ // Entrar em modo User
+    @ msr cpsr_c, #MODE_USR
+    @ isb
+
+    ldr r3, =main
+    blx r3
+    bl hang
 
 ;@-------------------------------------------------------------------------
 ;@-------------------------------------------------------------------------

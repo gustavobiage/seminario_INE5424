@@ -5,21 +5,21 @@ SECTIONS
     . = 0x8000;
 
     .text : { *(.text*) }
-    . = ALIGN(4);
+    . = ALIGN(4096);
 
     __rodata_start__ = .;
     .rodata : { *(.data*) }
-    . = ALIGN(4);
+    . = ALIGN(4096);
     __rodata_end__ = .;
 
     __data_start__ = . ;
     .data : { *(.data*) }
-    . = ALIGN(4);
+    . = ALIGN(4096);
     __data_end__ = . ;
     __data_size__ = __data_end__ - __data_start__;
 
     __bss_start__ = . ;
     .bss : { *(.bss*) }
-    . = ALIGN(4);
+    . = ALIGN(4096);
     __bss_end__ = . ;
 }

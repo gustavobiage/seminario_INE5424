@@ -110,7 +110,7 @@ void init_thread() {
     scheduler.length = 1;
     scheduler.current_id = main_id;
     scheduler.thread[main_id].stack = scheduler.thread[main_id].stack_base + (MAX_STACK - 1);
-    __asm__("mov sp, %0" : : "r"(scheduler.thread[main_id].stack): );
+    // __asm__("mov sp, %0" : : "r"(scheduler.thread[main_id].stack): );
     // set_stack(scheduler.thread[main_id].stack);
 }
 
@@ -153,9 +153,6 @@ void schedule() {
 
     // do context switch
     scheduler.current_id = next_id;
-
-    hexstring((unsigned int) current_id);
-    hexstring((unsigned int) next_id);
 
     _after_context_switch(&scheduler.thread[current_id].stack,
                           &scheduler.thread[next_id].stack);
