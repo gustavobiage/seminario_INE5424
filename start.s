@@ -124,7 +124,7 @@ begin:
 
     // initialize User stack
     msr cpsr_c, #MODE_USR
-    bl init_thread
+    bl init_task
 
     ldr r3, =main
     blx r3

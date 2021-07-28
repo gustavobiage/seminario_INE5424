@@ -38,41 +38,23 @@ inline void set_domain_access() {
     __asm__("mcr p15, 0, %0, c3, c0, 0" : : "p"(TTBCR_DOMAIN) :);
 }
 
-// inline void page_tables_setup(volatile unsigned int* base_address) {
-inline void page_tables_setup() {
+inline void page_tables_setup(unsigned int* page_tables) {
     unsigned int aux = 0x0;
     for (int curr_page = 1006; curr_page >= 0; curr_page--) {
         aux = TTB_MEMORY_DESCRIPTOR | (curr_page << 20);
-        ((unsigned int*) PAGE_TABLES)[curr_page] = aux;
-    }
-    aux = TTB_DEVICE_DESCRIPTOR | (1007 << 20);
-    ((unsigned int*) PAGE_TABLES)[1007] = aux;
-    for (int curr_page = 4095; curr_page > 1007; curr_page--) {
-        aux = TTB_PERIPHERAL_DESCRIPTOR | (curr_page << 20);
-        ((unsigned int*) PAGE_TABLES)[curr_page] = aux;
-    }
-}
-
-inline void page_tables_setup2(unsigned int* page_tables, int i) {
-    unsigned int aux = 0x0;
-    for (int curr_page = 1006; curr_page >= 0; curr_page--) {
-        aux = TTB_MEMORY_DESCRIPTOR | ((curr_page * i) << 20);
         ((unsigned int*) page_tables)[curr_page] = aux;
     }
     aux = TTB_DEVICE_DESCRIPTOR | (1007 << 20);
     ((unsigned int*) page_tables)[1007] = aux;
     for (int curr_page = 4095; curr_page > 1007; curr_page--) {
-        aux = TTB_PERIPHERAL_DESCRIPTOR | ((curr_page * i) << 20);
+        aux = TTB_PERIPHERAL_DESCRIPTOR | (curr_page << 20);
         ((unsigned int*) page_tables)[curr_page] = aux;
     }
 }
 
-int counter = 2;
-
 unsigned int build_page_table() {
     unsigned int base = (unsigned int) page_tables;
-    page_tables_setup2(page_tables, counter);
-    counter++;
+    page_tables_setup(page_tables);
     page_tables -= 8 << 12;
     return base;
 }
@@ -164,7 +146,6 @@ set_loop:                                                                       
 }
 
 void mmu_init() {
-    // page_tables = (unsigned int*) 0;
     invalidate_caches();
     clear_branch_prediction_array();
     invalidate_tlb();
@@ -173,32 +154,14 @@ void mmu_init() {
     dsb();
     isb();
 
-    // Initialize PageTable.
-
-    // Create a basic L1 page table in RAM, with 1MB sections containing a flat
-    // (VA=PA) mapping, all pages Full Access, Strongly Ordered.
-
-    // It would be faster to create this in a read-only section in an assembly file.
-
-    page_tables_setup();
-
-    // page_tables_setup(page_tables);
+    page_tables = (unsigned int*) PAGE_TABLES;
+    page_tables_setup(page_tables);
     page_tables -= 8 << 12;
 
-    // Activate the MMU
     enable_mmu();
     dsb();
     isb();
-
-    // MMU now enabled - Virtual address system now active
-
-    // Branch Prediction init
     branch_prediction_enable();
-
-    // __asm__("str %0, [%1, #0x9c]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
-    // __asm__("str %0, [%1, #0xac]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
-    // __asm__("str %0, [%1, #0xbc]" : : "p"(VECTOR_TABLE), "p"(FLAG_SET_REG) :);
     dsb();
-    // __asm__("SEV");
     clear_bss();
 }
