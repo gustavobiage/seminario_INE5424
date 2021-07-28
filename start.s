@@ -133,6 +133,7 @@ begin:
 .global _before_context_switch
 _before_context_switch:
     pop {r0}                     // pop lr onto r0
+    sub r0, r0, #4               // adjust lr to pc
     mrs r1, spsr                 // save cpsr_usr (spsr_irq) to r1
     msr cpsr_c, #0x1F            // move to System Mode
     mrc p15, 0, r2, c2, c0, 0    // save ttbr0 to r2
